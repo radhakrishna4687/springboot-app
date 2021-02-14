@@ -1,0 +1,15 @@
+#Step-1: Code Deploy - Cloudfromation templates.
+#Ste-2: About appspec.yaml and scripts.
+#Step-3: Create Code Deploy Service Role.
+#Step-4: Create Code Deploy Application.
+#Step-5: Create CodeDeploy Deployment Group.
+#Step-6: Create the Stack and Verify the Following.
+      # 1.Application.
+      # 2. Deployment Group.
+#Step-6: Create Code Deploy Deployment.
+#1. update codebuild packaging to ZIP file.
+#2. verify Deployment.
+#3. Access Application Deploymet in EC2 Apps stack.
+
+
+

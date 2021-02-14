@@ -1,0 +1,34 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Master stack: PathToMasterStackFile'
+
+Resources:
+  # [...]
+  WebhookEventSource:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      Parameters:
+        LambdaModule: !GetAtt 'WebhookFunction.Outputs.StackName'
+        AlertingModule: !GetAtt 'Alerting.Outputs.StackName'
+        HttpMethod: POST
+      TemplateURL: './node_modules/@cfn-modules/lambda-event-source-webhook/module.yml'
+  WebhookFunction:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      Parameters:
+        AlertingModule: !GetAtt 'Alerting.Outputs.StackName'
+        Handler: 'webhook.handler'
+        Runtime: 'nodejs8.10'
+        EnvironmentVariable1: !Ref Project
+      TemplateURL: './node_modules/@cfn-modules/lambda-function/module.yml'
+  WebhookPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      Roles: [!GetAtt 'WebhookFunction.Outputs.RoleName']
+      PolicyName: 'codebuild'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: 'codebuild:StartBuild'
+          Resource: !GetAtt 'Project.Arn'

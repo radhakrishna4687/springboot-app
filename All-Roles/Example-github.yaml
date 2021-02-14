@@ -1,0 +1,60 @@
+
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Master stack: PathToMasterStackFile'
+
+Resources:
+  # [...]
+  Repository: # we only need this because the CodeBuild project cannot be created without a source.
+    Type: 'AWS::CodeCommit::Repository'
+    Properties:
+      RepositoryName: !Sub '${AWS::StackName}-dummy'
+  Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'codebuild.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns: ['arn:aws:iam::aws:policy/AdministratorAccess'] # depending on your use case you can narrow down this policy
+  LogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}'
+      RetentionInDays: 14
+  Project:
+    DependsOn: LogGroup
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Description: 'github-bot'
+      Environment:
+        ComputeType: 'BUILD_GENERAL1_SMALL'
+        Image: 'aws/codebuild/nodejs:8.11.0'
+        Type: 'LINUX_CONTAINER'
+      Name: !Ref 'AWS::StackName'
+      ServiceRole: !GetAtt 'Role.Arn'
+      Source:
+        BuildSpec: |
+          ---
+          version: 0.2
+          phases:
+            install:
+              commands: []
+            pre_build:
+              commands:
+              - 'git clone "https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}.git"'
+              - 'cd "${GITHUB_REPO}"'
+              - 'git reset --hard "${GITHUB_SHA}"'
+              - 'git submodule update --init --recursive'
+              - 'cd test/ && npm install && cd ../'
+            build:
+              commands:
+              - 'cd test/ && npm test && cd ../'
+        Location: !GetAtt 'Repository.CloneUrlHttp'
+        Type: CODECOMMIT
+      TimeoutInMinutes: 60

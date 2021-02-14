@@ -1,0 +1,22 @@
+version: 0.0 
+os: linux
+files:
+  - source: target/ccdemo.war
+    destination: /usr/share/tomcat8/webapps/
+hooks:
+  BeforeInstall: 
+    - location: script/before_install.sh 
+      timeout: 300 
+      runas: root     
+  AfterInstall: 
+    - location: script/after_install.sh 
+      timeout: 300 
+      runas: root  
+  Applicationstart: 
+    - location: script/start_server.sh 
+      timeout: 300 
+      runas: root      
+  ApplicationStop: 
+    - location: script/stop_server.sh 
+      timeout: 300 
+      runas: root      

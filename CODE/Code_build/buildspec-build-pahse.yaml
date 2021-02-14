@@ -1,0 +1,25 @@
+Version: 0.2 
+
+phases:
+
+  install:    
+    runtime-version:
+      java: openjdk8 
+   # commands:
+      #- echo nothing to do in the install phase.
+    pre_build:
+      commands:  
+        - echo nothing to do in the pre_build phase.
+    build:
+      commands: 
+        - echo Build started on `date`
+        - mvn clean install 
+       # - mvn package
+    post_build: 
+      commands:
+        - echo Build Completed on `data`
+    artifacts: 
+      type: war
+      files:
+        - |
+          target/*.war      

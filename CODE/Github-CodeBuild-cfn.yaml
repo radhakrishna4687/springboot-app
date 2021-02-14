@@ -1,0 +1,95 @@
+#Steps to follow.
+
+#Step-1: Create the S3 Buckets And Enable versioning or Use Existing Bucket.
+#Step-2:Create --> buildspec.yaml in our rest application and check-in code.
+# Step-3: Create CodeBuild Stack template.
+    #1.Create code Build Role.
+    #2.Cretae the Code build Project.
+    #3.Parameters.
+    #4.
+#Step-4: Ctrae the Stack and test the build 
+      #1. start build through aws cli command.
+      #2.verify the logs.
+      #3.Verify the Arifacts in s3 buckets.
+
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Master stack for Code Build Cloudformation templates'
+
+Parameters: 
+  ApplicationrepoName:
+    Type: String 
+    Description: Name of the repo which contains the rest Application
+    Default: ccdemo 
+  ArtifactStoreS3Location:
+    Type: String
+    Description: Name of s3 bucket
+    Default: restapi-apps-4687
+
+
+#Create the IAM roles 
+Resources: 
+  CodeBuildRole: 
+    Type: AWS::IAM::Role 
+    Properties: 
+      RoleName: 
+        Fn::Sub: CodeBuildRole-${AWS::StackName}
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [codebuild.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /service-role/
+      Policies: 
+        - PolicyName: CodeBuildCICDAcessPolicy
+          PolicyDocument: 
+            Version: '2012-10-17'
+            Statement:
+            #  - Effect: Allow
+            #    Action: [codecommit:GitPull]
+             #   Resource:  
+              #    - Fn::Sub: arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${ApplicationRepoName}
+              - Effect: Allow
+                Action:  
+                  - "logs:CreationLogGroup"
+                  - "Logs:CreateLogStream"
+                  - "logs:PutLogEvents"   
+                Resource: '*'
+                #  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*
+              - Effect: Allow 
+                Action: 
+                  - "s3:Putobject"
+                  - "s3:Getobject"
+                  - "s3:getobjectVersion"
+                  - "s3:ListBucket"
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::${ArtifactStoreS3Location} #restapi-apps-4687/devbuilds/
+  #Create codebuild Cfn Templates.
+  BuildRestAppCfnProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub BuildRestAppCfnProject-${AWS::StackName}
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Description: Build war file for rest Application
+      Artifacts:
+        Type: S3
+        Location: !Ref ArtifactStoreS3Location
+        Name: !Sub BuildRestAppCfnProject-${AWS::StackName}
+      Environment: 
+        Type: LINUX_CONTAINER  
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:2.0
+    # source code path. 
+      Source: 
+        Auth: 
+          Type: OAUTH
+        Location: https://github.com/radhakrishna4687/ccdemo-java.git #!Sub https://git-dcodecommit.us-east-1.amazon.aws.com/v1/${ApplicationrepoName}   #Here the code commite http url# 
+        Type: GITHUB
+      Triggers: 
+        Webhook: true  
+      TimeoutInMinutes: 15  
+      Tags:
+        - Key: Name
+          Value: !Sub BuildRestAppCfnProject-${AWS::StackName}

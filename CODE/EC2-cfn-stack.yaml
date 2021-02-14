@@ -1,0 +1,178 @@
+#Step 1: Create the Security groups with port 22 and 8080 rules for inbound access.
+#Step 2: Create the Two EC@ Instanes for Production and Stageing and update the useer data
+#Step 3:  Create the Instance profile role and iInstance profile for Ec2 to access s3 bucket .
+# Step 4: Create and Verify the CFn Templates.
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Ec2 Instance With Instance profile role access S3 buckets'
+
+Parameters: 
+  Keyname: 
+    Description: key name to ssh to instance 
+    Type: AWS::EC2::KeyPair::KeyName 
+# here using the cudtom keyname for cfn stack creation or by using the default keypair !And 
+    Default: cfn-key1  
+  # Creating the parametrs environments.
+  EnvName:
+    Type: String 
+    Description: Select the Environments.
+    Default: Staging
+    AllowedValues: 
+      - Staging 
+      - Production
+    ConstraintDescription: ENV must be Stage and Prod only.
+Mappings: 
+  Myregion: 
+    us-east-2:
+      HVM64:  ami-01aab85a5e4a5a0fe 
+    us-east-1:
+      HVM64: ami-047a51fa27710816e
+  MyEnvMap: 
+    Staging:
+      instanceType: t2.micro
+    Production: 
+      instanceType: t2.medium    
+Condition: 
+  CreateStagingEnv: !Equals [!Ref EnvName, Staging]  
+Resources:
+
+# Create the Iam roles for s3 buckrt access.
+  MyCICDEC2InstanceProfileRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow 
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies: 
+        - PolicyName: MyCICDEC2InstanceProfilePolicy 
+          PolicyDocument: 
+            Version: 2012-10-17 
+            Statement:
+              - Effect: Allow 
+                Action: 
+                  - 's3:Get*'
+                  - 's3:List*'
+                Resource: '*'  
+
+  MyInstanceProfile: 
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:   
+        - !Ref MyCICDEC2InstanceProfileRole         
+
+#Create the Security groups for EC2 Instances.
+  ec2securitygroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EC2 Secority grop With port 22 and 8080 inbound rules.
+      SecurityGroupIngress: 
+        - IpProtocol: tcp 
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+    # create the Security groups for he HTTP Port  8080.      
+        - IpProtocol: tcp 
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 0.0.0.0/0  
+# Creating the ec2 instances for staging.         
+  StageEC2instance:     
+    Type: AWS::EC2::Instance
+    Condition: CreateStagingEnv
+    Properties:
+      ImageId: !FindInMap [Myregion, !Ref "AWS::Region", HVM64]
+      InstanceType: !FindInMap [MyEnvMap, !Ref EnvName, instanceType]
+       # - MyEnvMap
+        #- !Ref EnvName 
+       # - instanceType 
+      KeyName: !Ref Keyname
+      SecurityGroups: 
+        - !Ref ec2securitygroup
+      IamInstanceProfile: !Ref MyInstanceProfile
+      Tags: 
+        - Key: Name 
+          Value: Webserver-2
+        - Key: Environment
+          Value: Stage   
+      UserData: 
+        Fn::Base64: |
+          #!/bin/bash
+          sudo yum update
+          sudo yum -y install ruby 
+          sudo yum -y install wget
+          sudo yum -y install java.1.8.0-openjdk.x86_64
+          sudo yum -y install java.1.8.0-openjdk-devel
+          sudo yum -y install tomcat8 
+          cd /home/ec2-user 
+          wget https://aws-codedeploy-us-east-1.s3.amazonaws.com/latest/install
+          chmod +x ./install 
+          sudo ./install auto 
+
+# Creating the ec2 instances for Prod.         
+  ProdEC2instance:     
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [Myregion, !Ref "AWS::Region", HVM64]
+        #- Myregion
+       # - !Ref 'AWS::Region'
+       # - HVM64
+      InstanceType: !FindInMap [MyEnvMap, !Ref EnvName, instanceType]
+       # - MyEnvMap
+       # - !Ref EnvName 
+        #- instanceType 
+      KeyName: !Ref Keyname
+      SecurityGroups: 
+        - !Ref ec2securitygroup
+      IamInstanceProfile: !Ref MyInstanceProfile
+      Tags: 
+        - Key: Name 
+          Value: Webserver-1
+        - Key: Environment
+          Value: Prod   
+      UserData: 
+        Fn::Base64: |
+          #!/bin/bash
+          sudo yum update
+          sudo yum -y install ruby 
+          sudo yum -y install wget
+          sudo yum -y install java.1.8.0-openjdk.x86_64
+          sudo yum -y install java.1.8.0-openjdk-devel
+          sudo yum -y install tomcat8 
+          cd /home/ec2-user 
+          wget https://aws-codedeploy-us-east-1.s3.amazonaws.com/latest/install
+          chmod +x ./install 
+          sudo ./install auto 
+
+Outputs: 
+  # get EC2 instance Attibutes For ec2 Instance Id 
+  InstanceId: 
+    Description: Instance Pubilc Dns Name 
+    Value: !Ref StageEC2instance
+  # Get EC2 Instance Attributes from EC2 instances.
+  DNSName: 
+    Description: Public DNS Anme of the ec2 instances.
+    Value: !GetAtt StageEC2instance.PublicDnsName
+  StageAppURL:
+    Description: Staging Application Access URL.
+    Value: !Sub "http://${StageEC2instance.PublicDnsName}:8080/ccdemo/hello"
+
+  ProdAppURL:
+    Description: Prod Application Access URL.
+    Value: !Sub "http://${ProdEC2instance.PublicDnsName}:8080/ccdemo/hello"
+    
+
+
+
+
+
+
+        
+
+

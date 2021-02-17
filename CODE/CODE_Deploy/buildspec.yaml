@@ -15,9 +15,11 @@ phases:
     post_build:
       - echo build is completed on `date`
 artifacts:
-  files:
-    - 'target/ccdemo.war'
-    - 'appspec.yml'
-    - 'script/before_install.sh'
-    - 'sccript/after_install.sh'
-    - 'script/start_server.sh'      
+  type: zip
+  files: 
+    - |
+      target/ccdemo.war
+      appspec.yml
+      script/before_install.sh
+      sccript/after_install.sh
+      script/start_server.sh    

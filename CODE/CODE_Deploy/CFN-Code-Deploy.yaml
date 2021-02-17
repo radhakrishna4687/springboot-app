@@ -23,49 +23,50 @@ Parameters:
   ArtifactStoreS3Location:
     Type: String
     Description: Name of s3 bucket
-    Default: rest-apps-4687
+    Default: restapi-apps-4687
 #Create the IAM roles 
 Resources:      
 
   CodeBuildRole:
-    Type: AWS::IAM::Role 
+    Type: 'AWS::IAM::Role'
     Properties: 
-      RoleName: 
-        Fn::Sub: CodeBuildRole-${AWS::StackName}
+     # RoleName: !Sub CodeBuildRole-${AWS::StackName}
       AssumeRolePolicyDocument: 
         Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              Service: [codebuild.amazonaws.com]
-            Action: ['sts:AssumeRole']
+              Service:  
+                - codebuild.amazonaws.com
+            Action: 
+              - 'sts:AssumeRole'
       Path: /service-role/
       Policies: 
         - PolicyName: CodeBuildCICDAcessPolicy
           PolicyDocument: 
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
             - Effect: Allow
               Action: "*"
-              Resource: 
-                - Fn::Sub: arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${ApplicationRepoName}
+              Resource: "*"
+               # - Fn::Sub: arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${ApplicationrepoName}
             - Effect: Allow
               Action:  
                 - "logs:CreationLogGroup"
                 - "Logs:CreateLogStream"
                 - "logs:PutLogEvents"   
-              Resource: 
-                - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*
+              Resource: "*"
+               # - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*
             - Effect: Allow 
               Action: 
                 - "s3:Putobject"
                 - "s3:Getobject"
                 - "s3:getobjectVersion"
                 - "s3:ListBucket"
-              Resource:
-                - Fn::Sub: arn:aws:s3:::codepipeline-${AWS::Region}-*
-                - Fn::Sub: arn:aws:s3:::${ArtifactStoreS3Location}/*
-                - Fn::Sub: arn:aws:s3:::${ArtifactStoreS3Location}
+              Resource: "*"
+               # - Fn::Sub: arn:aws:s3:::codepipeline-${AWS::Region}-*
+                #- Fn::Sub: arn:aws:s3:::${ArtifactStoreS3Location}/*
+               # - Fn::Sub: arn:aws:s3:::${ArtifactStoreS3Location}
 
   #Create codebuild Cfn Templates.
   BuildRestAppCfnProject:
@@ -95,24 +96,25 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub BuildRestAppCfnProject-${AWS::StackName}
-
+# code deploy service Role.
   CodeDeployServicerole:
-    Type: 'AWS::IAM::Role'
+    Type: "AWS::IAM::Role"
     Properties: 
-      RoleName:
-        Fn::Sub: CodeDeployServiceRole-${AWS::StackName}
+     # RoleName: !Sub CodeDeployServiceRole-${AWS::StackName}
         AssumeRolePolicyDocument:
-          Version: 2012-10-17 
+          Version: "2012-10-17"
           Statement:
             - Effect: Allow 
               Principal: 
-                Service: [codedeploy.amazonaws.com]
-              Action: ['sts:AssumeRole'] 
+                Service: 
+                  - codedeploy.amazonaws.com
+              Action: 
+                - "sts:AssumeRole"
         Path: /
         Policies: 
           - PolicyName: "CodeDeployCICDAcessPolicy"
             PolicyDocument: 
-              Version: 2012-10-17 
+              Version: "2012-10-17"
               Statement:
                 - Effect: Allow 
                   Action:
@@ -124,23 +126,23 @@ Resources:
                     - 'cloudwatch:DescribeAlarms'
                     - 'cloudwatch:PutMetricAlarm'    
                   Resource: '*'            
-
+# Code Deploy Application.
   CodeDeployApplication: 
     Type: AWS::CodeDeploy::Application
     Properties:
-      ApplicationName: !Sub Rest-api${AWS::StackName}
+      ApplicationName: !Sub RestApp-${AWS::StackName}
       ComputePlatform: Server 
-
+#code Deplyment group
   CodeDeployementGroup:
     Type: AWS::CodeDeploy::DeploymentGroup
     Properties:
       ApplicationName: !Ref CodeDeployApplication
-      EC2TagFilters:
+      Ec2TagFilters:
         - Key: Name 
           Value: dev 
           Type: "KEY_AND_VALUE"
       ServiceRoleArn: !GetAtt CodeDeployServicerole.Arn
-      DeploymentGroupName: !Sub DeploymentGroupName-${AWS::SatckName}
+      DeploymentGroupName: !Sub DeploymentGroupName-${AWS::StackName}
 
 
           
